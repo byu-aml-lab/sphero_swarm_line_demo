@@ -66,7 +66,6 @@ class SpheroSwarmLineForm(QtGui.QWidget):
 
         self.setWindowTitle("Sphero Swarm Teleop")
         self.show()
-        self.spheroListWidget.connect(on_item_change)
 
     def keyPressEvent(self, e): 
         twist = None 
@@ -190,11 +189,6 @@ class SpheroSwarmLineForm(QtGui.QWidget):
                 twist.angular.z = 0
             self.cmdVelPub.publish(twist) # how to tell sphero to move. all fields in twist must be explicitly set.
 
-    def on_item_change(self, curr, prev):
-        currSt = str(prev.text())
-        currId = self.spheroToNum[currSt]
-        order.remove(currId)
-        order.insert(0,currId)
 
 
 
