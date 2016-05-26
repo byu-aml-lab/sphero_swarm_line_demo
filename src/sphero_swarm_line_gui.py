@@ -16,6 +16,7 @@ class SpheroSwarmLineForm(QtGui.QWidget):
         self.resize(600, 480) 
         self.sphero_dict = {}
         self.initUI()
+        self.initialized = False
         '''The Sphero bluetooth controller maps string names to addresses, The camera maps num to locations numToSphero
         and spheroToNum are dictoinaries that will map back and forth'''
         self.numToSphero = {}
@@ -130,6 +131,7 @@ class SpheroSwarmLineForm(QtGui.QWidget):
 
     ### called when refreshDevices is clicked.
     def refreshDevices(self):
+        self.initialized = False
         self.spheroListWidget.clear()
         self.sphero_dict = rospy.get_param('/sphero_swarm/connected')
         self.numToSphero = {}
@@ -146,23 +148,32 @@ class SpheroSwarmLineForm(QtGui.QWidget):
             self.location[num] = (-1,-1)
             self.spheroListWidget.addItem(name)
         self.spheroListWidget.setCurrentRow(0)
+        self.initialized = True
         self.update()
 
     ### main body of algorithm should go here. MSG contains an id, x,y and orientation deta members
     def aprtCallback(self, msg):
 
-        if len(self.sphero_dict) != len(self.numToSphero): #still initializing
+        if not self.initialized: #still initializing
             return
-        else:
-            self.location[msg.id] = (msg.x, msg.y)
-            toHere = (msg.x, msg.y)
-            nextIndx = self.order.index(msg.id) + 1;
+
+        for key in self.location:
+            self.location[key] = (-1,-1)
+
+        for i in range(0,len(msg.id)):
+            self.location[msg.id[i]] = (msg.pose[i].x, msg.pose[i].y)
+
+        for key in msg.id:
+            toHere = self.location[key]
+            if toHere[0] == -1:
+                continue
+            nextIndx = self.order.index(key) + 1
             if nextIndx >= len(self.order):
-                return
+                continue
             nextSpher = self.order[nextIndx]
             fromHere = self.location[nextSpher]
             if fromHere[0] == -1:
-                return
+                continue
             diffX = toHere[0] - fromHere[0]
             diffY = toHere[1] - fromHere[1]
 
