@@ -8,6 +8,8 @@ from multi_apriltags_tracker.msg import april_tag_pos
 STEP_LENGTH = 50
 FOLLOW_SPPED = 75
 RADIUS = 150
+KP = 0.5
+KD = 0.5
 
 class SpheroSwarmLineForm(QtGui.QWidget):
     
@@ -23,7 +25,7 @@ class SpheroSwarmLineForm(QtGui.QWidget):
         self.spheroToNum = {}
         self.order = [] #used to keep a follow the leadrer order
         self.location = {} #dictionary that maps sphero id nums to last known location
-
+        self.error = {}
         rospy.init_node('sphero_swarm_line_gui', anonymous=True)
 
         self.cmdVelPub = rospy.Publisher('cmd_vel', SpheroTwist, queue_size=1) #self.cmdVelPub is who we tell about to move sphero
@@ -157,6 +159,40 @@ class SpheroSwarmLineForm(QtGui.QWidget):
         if not self.initialized: #still initializing
             return
 
+        if self.order[0] in msg.id:
+            firstInd = msg.id.index(self.order[0])
+            self.location[self.order[0]] = (msg.pose[firstInd].x, msg.pose[firstInd].y)
+
+        for i in range(1, len(self.order)):
+            if (not self.order[i -1] in msg.id) or (not self.order[i] in msg.id):
+               continue
+            twist = SpheroTwist()
+            twist.name = self.numToSphero[self.order[i]]
+            twist.linear.z = 0
+            twist.angular.x = 0
+            twist.angular.y = 0
+            twist.angular.z = 0
+
+            msgIndex = msg.id.index(self.order[i])
+            self.location[self.order[i]] = (msg.pose[msgIndex].x, msg.pose[msgIndex].y)
+            fromHere = self.order[i]
+            toHere = self.order[i -1]
+            e_x = self.location[toHere][0]  - self.location[fromHere][0]
+            e_y = self.location[toHere][1] - self.location[fromHere][1]
+            print "(e_x, e_xy): (%d,%d)" % (e_x, e_y)
+            print "distance: %d" % math.sqrt((e_x * e_x) + (e_y * e_y))
+            if math.sqrt((e_x * e_x) + (e_y * e_y)) < RADIUS:
+                twist.linear.x = 0
+                twist.linear.y = 0
+            else:
+                deX = e_x - self.error.setdefault(fromHere, (0,0))[0]
+                deY = e_y - self.error[fromHere][1]
+                self.error[fromHere] = (e_x, e_y)
+                twist.linear.x = KP * e_x + KD * deX
+                twist.linear.y = -(KP * e_y + KD * deY)
+            self.cmdVelPub.publish(twist)
+
+'''
         for key in self.location:
             self.location[key] = (-1,-1)
 
@@ -182,12 +218,7 @@ class SpheroSwarmLineForm(QtGui.QWidget):
             twist.name = self.numToSphero[nextSpher]
             print distance
             if distance < RADIUS:
-                twist.linear.x = 0;
-                twist.linear.y = 0;
-                twist.linear.z = 0
-                twist.angular.x = 0;
-                twist.angular.y = 0;
-                twist.angular.z = 0
+
             else:
                 omega = math.atan2(diffY, diffX)
                 deltaX = FOLLOW_SPPED * math.cos(omega)
@@ -200,7 +231,7 @@ class SpheroSwarmLineForm(QtGui.QWidget):
                 twist.angular.z = 0
             self.cmdVelPub.publish(twist) # how to tell sphero to move. all fields in twist must be explicitly set.
 
-
+'''
 
 
 if __name__ == '__main__':
