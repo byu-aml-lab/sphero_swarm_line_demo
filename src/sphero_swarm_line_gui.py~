@@ -8,7 +8,7 @@ from multi_apriltags_tracker.msg import april_tag_pos
 
 STEP_LENGTH = 50
 RADIUS = 80
-KP = 0.1
+KP = 0.25
 KD = 0.5
 
 
