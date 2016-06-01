@@ -2,14 +2,16 @@
 
 import sys, rospy, math
 from PyQt4 import QtGui, QtCore
+import numpy as np
 
 from sphero_swarm_node.msg import SpheroTwist, SpheroColor
 from multi_apriltags_tracker.msg import april_tag_pos
 
-STEP_LENGTH = 50
-RADIUS = 80
-KP = 0.1
-KD = 0.5
+STEP_LENGTH = 85
+RADIUS = 85
+SEN = 110
+KP = 0.65
+KD = 0.45
 
 
 class SpheroSwarmLineForm(QtGui.QWidget):
@@ -77,12 +79,12 @@ class SpheroSwarmLineForm(QtGui.QWidget):
     def keyPressEvent(self, e):
         twist = None
 
-        print "key pressed"
+        #print "key pressed"
         selected_items = self.spheroListWidget.selectedItems()
         if len(selected_items) == 0:
             return
 
-        print "selected"
+        #print "selected"
 
         if e.key() == QtCore.Qt.Key_U:
             twist = SpheroTwist()
@@ -200,7 +202,7 @@ class SpheroSwarmLineForm(QtGui.QWidget):
 
     ### main body of algorithm should go here. MSG contains an id, x,y and orientation deta members
     def aprtCallback(self, msg):
-        print msg.id
+       # print msg.id
         if not self.initialized:  # still initializing
             return
 
@@ -224,29 +226,37 @@ class SpheroSwarmLineForm(QtGui.QWidget):
 
             e_x = self.destination[me][0] - self.location[me][0]
             e_y = self.destination[me][1] - self.location[me][1]
-            print "Location (%d,%d)" % self.location[me]
-            print "Destination (%d,%d)" % self.destination[me]
+           # print self.numToSphero[i]
+           # print "Location (%d,%d)" % self.location[me]
+           # print "Destination (%d,%d)" % self.destination[me]
             distance = math.sqrt((e_x * e_x) + (e_y * e_y))
-            print "Distance: %d" % distance
-            if self.destination[me] == (-1, -1) or distance <= RADIUS:
+            #print "Distance: %d" % distance
+            #print "(ex,ey): (%d,%d)" %(e_x, e_y)
+            if  distance <= RADIUS or self.destination[me] == (-1, -1):
+		print "Radius"
                 leader = self.order[self.order.index(me) - 1]
                 self.destination[me] = self.location[leader]
                 self.error[me] = (0,0)
-                continue
-            elif self.count % 25 == 0:
-                    leader = self.order[self.order.index(me) - 1]
-                    self.destination[me] = self.location[leader]
-                    self.error[me] = (0,0)
-                    e_x = self.destination[me][0] - self.location[me][0]
-                    e_y = self.destination[me][1] - self.location[me][1]
-     
+		continue
+            elif self.count % 8 == 0:
+		print "reset"
+                leader = self.order[self.order.index(me) - 1]
+                self.destination[me] = self.location[leader]
+                self.error[me] = (0,0)
+                e_x = self.destination[me][0] - self.location[me][0]
+                e_y = self.destination[me][1] - self.location[me][1]
+            if abs(e_x) < RADIUS:
+                e_x = e_x/2
+            if abs(e_y) < RADIUS:
+                e_y = e_y/2
             deX = e_x - self.error[me][0]
             deY = e_y - self.error[me][1]
             self.error[me] = (e_x, e_y)
             twist.linear.x = (KP * e_x + KD * deX)
             twist.linear.y = -(KP * e_y + KD * deY)
             self.cmdVelPub.publish(twist)
-            self.count += 1
+        self.count += 1
+        print "count: %d" % self.count
 
 
 '''
