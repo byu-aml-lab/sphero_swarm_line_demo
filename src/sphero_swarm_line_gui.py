@@ -193,7 +193,7 @@ class SpheroSwarmLineForm(QtGui.QWidget):
             self.order[len(self.order):] = [num]
             self.location[num] = (-1, -1)
             self.destination[num] = (-1, -1)
-            self.error[num] = (0, 0)
+            self.error[num] = 0
             self.spheroListWidget.addItem(name)
         self.spheroListWidget.setCurrentRow(0)
         print self.order
@@ -233,27 +233,27 @@ class SpheroSwarmLineForm(QtGui.QWidget):
             #print "Distance: %d" % distance
             #print "(ex,ey): (%d,%d)" %(e_x, e_y)
             if  distance <= RADIUS or self.destination[me] == (-1, -1):
-		print "Radius"
+                print "Radius"
                 leader = self.order[self.order.index(me) - 1]
                 self.destination[me] = self.location[leader]
-                self.error[me] = (0,0)
-		continue
+                self.error[me] = 0
+                continue
             elif self.count % 8 == 0:
-		print "reset"
+                print "reset"
                 leader = self.order[self.order.index(me) - 1]
                 self.destination[me] = self.location[leader]
                 self.error[me] = (0,0)
                 e_x = self.destination[me][0] - self.location[me][0]
                 e_y = self.destination[me][1] - self.location[me][1]
-            if abs(e_x) < RADIUS:
-                e_x = e_x/2
-            if abs(e_y) < RADIUS:
-                e_y = e_y/2
-            deX = e_x - self.error[me][0]
-            deY = e_y - self.error[me][1]
-            self.error[me] = (e_x, e_y)
-            twist.linear.x = (KP * e_x + KD * deX)
-            twist.linear.y = -(KP * e_y + KD * deY)
+                distance = math.sqrt((e_x * e_x) + (e_y * e_y))
+            distance -= RADIUS
+            omega = math.atan2(e_y, e_x)
+            de = distance - self.serror
+            self.error[me] = distance
+            v = (KP * distance) + (KD * de)
+
+            twist.linear.x = v * math.cos(omega)
+            twist.linear.y = -v * math.sin(omega)
             self.cmdVelPub.publish(twist)
         self.count += 1
         print "count: %d" % self.count
