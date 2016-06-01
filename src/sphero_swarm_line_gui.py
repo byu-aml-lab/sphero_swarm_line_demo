@@ -9,7 +9,7 @@ from multi_apriltags_tracker.msg import april_tag_pos
 
 STEP_LENGTH = 85
 RADIUS = 85
-SEN = 110
+MAXSPEED = 256
 KP = 0.65
 KD = 0.45
 
@@ -251,7 +251,7 @@ class SpheroSwarmLineForm(QtGui.QWidget):
             de = distance - self.serror
             self.error[me] = distance
             v = (KP * distance) + (KD * de)
-
+            max(v, MAXSPEED)
             twist.linear.x = v * math.cos(omega)
             twist.linear.y = -v * math.sin(omega)
             self.cmdVelPub.publish(twist)
